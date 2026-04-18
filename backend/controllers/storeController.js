@@ -3,11 +3,14 @@ const { Op } = require('sequelize');
 
 exports.listStores = async (req, res, next) => {
   try {
-    const { name, address } = req.query;
+    const { name, address, sortBy = 'name', order = 'ASC' } = req.query;
+    const allowedSortBy = ['name', 'address', 'email', 'created_at'];
+    const sortField = allowedSortBy.includes(sortBy) ? sortBy : 'name';
+    const sortOrder = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     const where = {};
     if (name) where.name = { [Op.like]: `%${name}%` };
     if (address) where.address = { [Op.like]: `%${address}%` };
-    const stores = await Store.findAll({ where });
+    const stores = await Store.findAll({ where, order: [[sortField, sortOrder]] });
     const userId = req.user ? req.user.id : null;
     const results = await Promise.all(stores.map(async s => {
       const avgRow = await Rating.findAll({ where: { store_id: s.id }, attributes: [[sequelize.fn('AVG', sequelize.col('rating')), 'avg']] });

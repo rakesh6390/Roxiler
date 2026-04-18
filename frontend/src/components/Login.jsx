@@ -10,7 +10,7 @@ export default function Login({ onLogin }){
     try{
       const res = await api.auth.login({ email, password });
       onLogin(res);
-    }catch(e){ setErr(e.body?.message || JSON.stringify(e.body) || 'Login failed'); }
+    }catch(e){ setErr(e.message || 'Login failed'); }
   };
   return (
     <div className="max-w-md mx-auto bg-white shadow rounded p-6">

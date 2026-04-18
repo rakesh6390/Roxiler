@@ -4,21 +4,22 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 
 const nameRules = body('name').isLength({ min: 20, max: 60 }).withMessage('Name must be 20-60 characters');
-const addressRules = body('address').optional().isLength({ max: 400 }).withMessage('Address max 400');
+const addressRules = body('address').isLength({ min: 1, max: 400 }).withMessage('Address must be 1-400 characters');
 const passwordRules = body('password').isLength({ min: 8, max: 16 }).matches(/[A-Z]/).withMessage('Password must contain uppercase').matches(/[^A-Za-z0-9]/).withMessage('Password must contain special char');
 const emailRules = body('email').isEmail().withMessage('Invalid email');
+const roleRules = body('role').optional().isIn(['ADMIN', 'USER', 'STORE_OWNER']).withMessage('Invalid role');
 
-exports.signupValidation = [nameRules, addressRules, emailRules, passwordRules];
+exports.signupValidation = [nameRules, addressRules, emailRules, passwordRules, roleRules];
 
 exports.signup = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(422).json({ errors: errors.array() });
-    const { name, email, address, password } = req.body;
+    const { name, email, address, password, role } = req.body;
     const exists = await User.findOne({ where: { email } });
     if (exists) return res.status(409).json({ message: 'Email already used' });
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, address, password_hash: hash, role: 'USER' });
+    const user = await User.create({ name, email, address, password_hash: hash, role: role || 'USER' });
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
     res.json({ token, role: user.role, name: user.name, email: user.email });
   } catch (err) { next(err); }

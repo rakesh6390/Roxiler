@@ -3,19 +3,17 @@ import api from '../api';
 
 export default function UserStores(){
   const [stores, setStores] = useState([]);
-  const [storeFilters, setStoreFilters] = useState({ name: '', address: '' });
+  const [storeFilters, setStoreFilters] = useState({ name: '', address: '', sortBy: 'name', order: 'ASC' });
   const [rating, setRating] = useState({});
   const [submitted, setSubmitted] = useState({});
   const [errors, setErrors] = useState({});
   
   const load = async () => {
-    let queryString = '';
-    if (storeFilters.name) queryString += `name=${encodeURIComponent(storeFilters.name)}`;
-    if (storeFilters.address) {
-      if (queryString) queryString += '&';
-      queryString += `address=${encodeURIComponent(storeFilters.address)}`;
-    }
-    const res = await api.stores.list(queryString);
+    const params = new URLSearchParams();
+    Object.entries(storeFilters).forEach(([key, value]) => {
+      if (value) params.append(key, value);
+    });
+    const res = await api.stores.list(params.toString());
     setStores(res);
     // initialize rating with existing user ratings
     const initialRating = {};
@@ -28,13 +26,11 @@ export default function UserStores(){
     });
     setRating(initialRating);
     setSubmitted(initialSubmitted);
-    // Clear the filter fields after search
-    setStoreFilters({ name: '', address: '' });
   };
   useEffect(()=>{ load(); }, []);
   const validateRating = (val) => {
     const num = Number(val);
-    if (!val || isNaN(num) || num < 1 || num > 5) return 'Rating must be a number between 1 and 5';
+    if (!val || isNaN(num) || num < 1 || num > 5 || !Number.isInteger(num)) return 'Rating must be an integer between 1 and 5';
     return null;
   };
   const handleRatingChange = (id, val) => {
@@ -72,6 +68,15 @@ export default function UserStores(){
         <div className="flex items-center gap-2">
           <input placeholder="Search name" value={storeFilters.name} onChange={e=>setStoreFilters({...storeFilters,name:e.target.value})} className="border px-3 py-2 rounded" />
           <input placeholder="Search address" value={storeFilters.address} onChange={e=>setStoreFilters({...storeFilters,address:e.target.value})} className="border px-3 py-2 rounded" />
+          <select value={storeFilters.sortBy} onChange={e=>setStoreFilters({...storeFilters,sortBy:e.target.value})} className="border px-3 py-2 rounded">
+            <option value="name">Sort by Name</option>
+            <option value="address">Sort by Address</option>
+            <option value="email">Sort by Email</option>
+          </select>
+          <select value={storeFilters.order} onChange={e=>setStoreFilters({...storeFilters,order:e.target.value})} className="border px-3 py-2 rounded">
+            <option value="ASC">Ascending</option>
+            <option value="DESC">Descending</option>
+          </select>
           <button onClick={()=>load()} className="bg-blue-600 text-white px-3 py-2 rounded">Search</button>
         </div>
       </div>
@@ -89,7 +94,7 @@ export default function UserStores(){
                 Your Rating: <span className="font-semibold">{s.userRating ?? '-'}</span>
               </div>
               <div className="flex flex-col gap-2">
-                <input value={rating[s.id]||''} onChange={e=>handleRatingChange(s.id, e.target.value)} placeholder="1-5" className="w-20 border px-2 py-1 rounded" />
+                <input type="number" min="1" max="5" step="1" value={rating[s.id]||''} onChange={e=>handleRatingChange(s.id, e.target.value)} placeholder="1-5" className="w-20 border px-2 py-1 rounded" />
                 {errors[s.id] && <div className="text-red-500 text-xs">{errors[s.id]}</div>}
                 <div className="flex gap-1">
                   <button onClick={()=>submit(s.id)} disabled={submitted[s.id] || !!errors[s.id] || !rating[s.id]} className="bg-green-600 text-white px-2 py-1 rounded text-sm disabled:opacity-50">

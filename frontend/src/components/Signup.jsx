@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import api from '../api';
 
 export default function Signup({ onSignup }){
-  const [form, setForm] = useState({ name:'', email:'', address:'', password:'' });
+  const [form, setForm] = useState({ name:'', email:'', address:'', password:'', role: 'USER' });
   const [errors, setErrors] = useState({});
   const [msg, setMsg] = useState(null);
 
@@ -43,6 +43,11 @@ export default function Signup({ onSignup }){
     } else if (!/[^A-Za-z0-9]/.test(form.password)) {
       newErrors.password = 'Password must contain at least one special character';
     }
+
+    // Role validation
+    if (!['USER', 'ADMIN', 'STORE_OWNER'].includes(form.role)) {
+      newErrors.role = 'Please select a valid role';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -63,7 +68,7 @@ export default function Signup({ onSignup }){
         onSignup(res);
       } else {
         setMsg('Signup success. Please login.');
-        setForm({ name:'', email:'', address:'', password:'' });
+        setForm({ name:'', email:'', address:'', password:'', role:'USER' });
       }
     }catch(e){ 
       setMsg(e.message); 
@@ -97,6 +102,15 @@ export default function Signup({ onSignup }){
           <input type="password" value={form.password} onChange={e=>{setForm({...form,password:e.target.value}); if(errors.password) setErrors({...errors, password: ''});}} placeholder="8-16 chars: 1 uppercase, 1 special (@!#$%^&*)" required className="w-full border px-3 py-2 rounded text-sm" />
           <p className="text-xs text-gray-500 mt-1">8-16 characters, at least 1 uppercase letter & 1 special character {form.password.length > 0 && `(${form.password.length}/16)`}</p>
           {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+        </div>
+        <div>
+          <label className="block text-sm mb-1">Role</label>
+          <select value={form.role} onChange={e=>{setForm({...form,role:e.target.value}); if(errors.role) setErrors({...errors, role: ''});}} className="w-full border px-3 py-2 rounded text-sm">
+            <option value="USER">User</option>
+            <option value="ADMIN">Administrator</option>
+            <option value="STORE_OWNER">Store Owner</option>
+          </select>
+          {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role}</p>}
         </div>
         <div className="flex justify-end">
           <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">Signup</button>

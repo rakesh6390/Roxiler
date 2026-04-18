@@ -5,7 +5,7 @@ const { body, validationResult, query } = require('express-validator');
 exports.createUserValidation = [
   body('name').isLength({ min: 20, max: 60 }),
   body('email').isEmail(),
-  body('address').optional().isLength({ max: 400 }),
+  body('address').isLength({ min: 1, max: 400 }),
   body('password').isLength({ min: 8, max: 16 }).matches(/[A-Z]/).matches(/[^A-Za-z0-9]/),
   body('role').isIn(['ADMIN','USER','STORE_OWNER'])
 ];
@@ -25,9 +25,9 @@ exports.createUser = async (req, res, next) => {
 };
 
 exports.createStoreValidation = [
-  body('name').isString().notEmpty(),
+  body('name').isLength({ min: 20, max: 60 }),
   body('email').optional().isEmail(),
-  body('address').optional().isLength({ max: 400 }),
+  body('address').isLength({ min: 1, max: 400 }),
   body('owner_id').notEmpty().withMessage('Store owner is required')
 ];
 
@@ -62,12 +62,15 @@ exports.dashboard = async (req, res, next) => {
 
 exports.listStores = async (req, res, next) => {
   try {
-    const { name, email, address, sortBy='name', order='ASC', page=1, limit=50 } = req.query;
+    const { name, email, address, sortBy='name', order='ASC' } = req.query;
+    const allowedSortBy = ['name', 'email', 'address', 'created_at'];
+    const sortField = allowedSortBy.includes(sortBy) ? sortBy : 'name';
+    const sortOrder = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     const where = {};
     if (name) where.name = { [Op.like]: `%${name}%` };
     if (email) where.email = { [Op.like]: `%${email}%` };
     if (address) where.address = { [Op.like]: `%${address}%` };
-    const stores = await Store.findAll({ where, order: [[sortBy, order]] });
+    const stores = await Store.findAll({ where, order: [[sortField, sortOrder]] });
     // compute average ratings
     const results = await Promise.all(stores.map(async s => {
       const avg = await Rating.findAll({ where: { store_id: s.id }, attributes: [[sequelize.fn('AVG', sequelize.col('rating')), 'avg']] });
@@ -80,12 +83,15 @@ exports.listStores = async (req, res, next) => {
 exports.listUsers = async (req, res, next) => {
   try {
     const { name, email, address, role, sortBy='name', order='ASC' } = req.query;
+    const allowedSortBy = ['name', 'email', 'address', 'role', 'created_at'];
+    const sortField = allowedSortBy.includes(sortBy) ? sortBy : 'name';
+    const sortOrder = String(order).toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
     const where = {};
     if (name) where.name = { [Op.like]: `%${name}%` };
     if (email) where.email = { [Op.like]: `%${email}%` };
     if (address) where.address = { [Op.like]: `%${address}%` };
     if (role) where.role = role;
-    const users = await User.findAll({ where, order: [[sortBy, order]] });
+    const users = await User.findAll({ where, order: [[sortField, sortOrder]] });
     res.json(users.map(u => ({ id: u.id, name: u.name, email: u.email, address: u.address, role: u.role })));
   } catch (err) { next(err); }
 };
